@@ -69,7 +69,7 @@ func usage(o io.Writer) {
 	version(o)
 	fmt.Fprintln(o)
 	fmt.Fprintln(o, "General commandline:")
-	fmt.Fprintln(o, "jsonnet {<option>} <filename>")
+	fmt.Fprintln(o, "jsonnet-deps {<option>} <filename>")
 	fmt.Fprintln(o, "Note: Only one filename is supported")
 	fmt.Fprintln(o)
 	fmt.Fprintln(o, "Available options:")
@@ -347,9 +347,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	vm.Importer(&jsonnet.FileImporter{
+	dli := newDependLoggingImporter(&jsonnet.FileImporter{
 		JPaths: config.evalJpath,
 	})
+	vm.Importer(dli)
 
 	if len(config.inputFiles) != 1 {
 		// Should already have been caught by processArgs.
@@ -373,7 +374,7 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	output, err := vm.EvaluateSnippet(filename, input)
+	_, err = vm.EvaluateSnippet(filename, input)
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -381,6 +382,7 @@ func main() {
 	}
 
 	// Write output JSON.
+	output := strings.Join(dli.dependencyList(), "\n") + "\n"
 	err = writeOutputFile(output, config.outputFile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
